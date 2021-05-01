@@ -83,6 +83,7 @@ func main() {
 			case "help":
 				msg.Text = "type /url or /count."
 				_, _ = bot.Send(msg)
+			case "count":
 
 			case "withArgument":
 				msg.Text = "You supplied the following argument: " + update.Message.CommandArguments()
