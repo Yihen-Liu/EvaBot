@@ -94,6 +94,7 @@ func main() {
 					var u URL
 					if err := DB.Where("user_name=?", update.Message.From.UserName).First(&u).Error; err == nil {
 						msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
+						_, _ = bot.Send(msg)
 						return
 					}
 
@@ -114,7 +115,7 @@ func main() {
 						URLValue:   inviteLink.InviteLink,
 						UserName:   update.Message.From.UserName,
 						Status:     1,
-						UserId:     string(update.Message.From.ID),
+						UserId:     fmt.Sprintf("%d", update.Message.From.ID),
 						CreateTime: time.Now().Unix(),
 						UpdateTime: time.Now().Unix(),
 					}
