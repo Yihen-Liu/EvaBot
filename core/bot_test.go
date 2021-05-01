@@ -941,7 +941,7 @@ func TestPolls(t *testing.T) {
 func TestSendDice(t *testing.T) {
 	bot, _ := getBot(t)
 
-	dice := NewSendDice(ChatID)
+	dice := NewDice(ChatID)
 
 	msg, err := bot.Send(dice)
 	if err != nil {
