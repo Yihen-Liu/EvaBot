@@ -2,23 +2,23 @@
 package main
 
 import (
-"fmt"
-"os"
-"path/filepath"
+	"fmt"
+	"os"
+	"path/filepath"
 
-"github.com/xelaj/go-dry"
+	"github.com/xelaj/go-dry"
 
-"github.com/k0kubun/pp"
-"github.com/riversgo007/EvaBot/mtproto/telegram"
+	"github.com/k0kubun/pp"
+	"github.com/riversgo007/EvaBot/mtproto/telegram"
 
-utils "github.com/riversgo007/EvaBot/mtproto/examples/example_utils"
+	utils "github.com/riversgo007/EvaBot/mtproto/examples/example_utils"
 )
 
 const (
-	appID   = 4806267
-	appHash = "d90c5efaf477553e7e2b7a168cacbd02"
+	appID   = 94575
+	appHash = "a3406de8d171bb422bb6ddf3bbd800e2"
 	// If you don't know how to get your token, read this guide: https://core.telegram.org/bots
-	botToken = "1706227378:AAE1i8R1CgpG_WJd7wr6y_bned_ggt0NJ7o"
+	botToken = "use your own bot token, i don't want to share mine, lol."
 	// bot username IS NOT required to perform auth, it's using to visualize example
 	botUsername = "superamazingbot"
 )
@@ -57,7 +57,6 @@ func main() {
 
 	// Request info about username of our bot, this is not efficient way, we just want to
 	// test, did auth succeed or not
-	//client.GetChannelInfoByInviteLink()
 	uname, err := client.ContactsResolveUsername(botUsername)
 	if err != nil {
 		fmt.Println("ResolveUsername error:", err.Error())
