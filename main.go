@@ -26,7 +26,7 @@ type URL struct {
 	Status 		int   `json:"status"`
 	UserName	string `json:"user_name"`
 	UserId		string `json:"user_id"`
-	ChatId    	int64	`json:"chat_id"`
+	ChatId    	string	`json:"chat_id"`
 	CreateTime  int64   `json:"create_time"`
 	UpdateTime 	int64 	`json:"update_time"`
 }
@@ -122,7 +122,7 @@ func main() {
 						UserId:     fmt.Sprintf("%d", update.Message.From.ID),
 						CreateTime: time.Now().Unix(),
 						UpdateTime: time.Now().Unix(),
-						ChatId: update.Message.Chat.ID,
+						ChatId: 	fmt.Sprintf("%d",update.Message.Chat.ID),
 					}
 
 					if err := DB.Create(&url).Error; err != nil {
