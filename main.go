@@ -26,6 +26,7 @@ type URL struct {
 	Status 		int   `json:"status"`
 	UserName	string `json:"user_name"`
 	UserId		string `json:"user_id"`
+	ChatId    	int64	`json:"chat_id"`
 	CreateTime  int64   `json:"create_time"`
 	UpdateTime 	int64 	`json:"update_time"`
 }
@@ -76,6 +77,7 @@ func main() {
 		}
 
 		log.Infof("[%s] %s", update.Message.From.UserName, update.Message.Text)
+		log.Infof("chat-id:%d, chat-name:%s", update.Message.Chat.ID, update.Message.Chat.UserName)
 		//update.Message.
 		if update.Message.IsCommand() {
 			msg := core.NewMessage(update.Message.Chat.ID, "")
@@ -94,7 +96,7 @@ func main() {
 				go func() {
 
 					var u URL
-					if err := DB.Where("user_name=?", update.Message.From.UserName).First(&u).Error; err == nil {
+					if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
 						msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
 						_, _ = bot.Send(msg)
 						return
@@ -120,6 +122,7 @@ func main() {
 						UserId:     fmt.Sprintf("%d", update.Message.From.ID),
 						CreateTime: time.Now().Unix(),
 						UpdateTime: time.Now().Unix(),
+						ChatId: update.Message.Chat.ID,
 					}
 
 					if err := DB.Create(&url).Error; err != nil {
