@@ -56,6 +56,7 @@ func main() {
 
 	u := core.NewUpdate(0)
 	u.Timeout = 60
+	//u.AllowedUpdates = []string{}
 
 	updates := bot.GetUpdatesChan(u)
 
@@ -75,7 +76,6 @@ func main() {
 		}
 
 		log.Infof("[%s] %s", update.Message.From.UserName, update.Message.Text)
-		log.Infof("new coming:%s, invite from:%s, invite link:%s",update.Message.From.UserName,update.ChatMember.From.UserName, update.ChatMember.InviteLink)
 		//update.Message.
 		if update.Message.IsCommand() {
 			msg := core.NewMessage(update.Message.Chat.ID, "")
