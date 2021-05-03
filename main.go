@@ -81,13 +81,14 @@ func main() {
 
 			switch update.Message.Command() {
 			case "help":
-				msg.Text = "type /url"
+				msg.Text = "type /url or /count"
 				_, _ = bot.Send(msg)
-/*
+
 			case "withArgument":
 				msg.Text = "You supplied the following argument: " + update.Message.CommandArguments()
 				_, _ = bot.Send(msg)
-*/
+			case "count":
+				log.Info("update.ChatMemeber: ",update.ChatMember)
 			case "url":
 				go func() {
 
