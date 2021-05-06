@@ -56,6 +56,89 @@ func initMysql() (err error) {
 	return
 }
 
+func handleJoinOrLeft(update core.Update)  {
+	if update.ChatMember!=nil{
+		var invitor Invitor
+		err := DB.Where("group_name=? and user_id=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID)).First(&invitor).Error
+
+		if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"&&invitor.Status!=0{  // 离开群组，需要update status=0
+			if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(0),"update_time": time.Now().Unix()}).Error; _err != nil {
+				log.Error("for left the chat, save invitor err:",_err.Error())
+			}
+			return
+		}
+
+	}
+	if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
+		var invitor Invitor
+		err := DB.Where("group_name=? and user_id=? and invitor_url=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID), update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
+		if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"&&invitor.Status!=1{
+			if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(1),"update_time": time.Now().Unix()}).Error; _err != nil {
+				log.Error("for join the chat, save invitor err:",_err.Error())
+			}
+			return
+		}
+
+		if err!=nil{
+			invitor = Invitor{
+				UserName: update.ChatMember.From.UserName,
+				FirstName: update.ChatMember.From.FirstName,
+				GroupName: update.ChatMember.Chat.Title,
+				UserId: fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID),
+				InvitorURL: update.ChatMember.InviteLink.InviteLink,
+				CreateTime: time.Now().Unix(),
+				UpdateTime: time.Now().Unix(),
+				Status: int8(1),
+			}
+			if err := DB.Create(&invitor).Error; err != nil {
+				log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
+			}
+		}
+	}
+}
+
+func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
+	go func() {
+
+		var u URL
+		if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
+			msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
+			_, _ = bot.Send(msg)
+			return
+		}
+
+		response, err := bot.Request(core.NewCreateChatInviteLink(update.Message.Chat.ID))
+		if err != nil {
+			log.Error("bot.Rrequest error:", err.Error())
+			return
+		}
+
+		var inviteLink core.ChatInviteLink
+		if err := json.Unmarshal(response.Result, &inviteLink); err != nil {
+			return
+		}
+
+		msg.Text = fmt.Sprintf("allocate to:%s, url:%s", update.Message.From, inviteLink.InviteLink)
+
+		url := URL{
+			URLValue:   inviteLink.InviteLink,
+			UserName:   update.Message.From.UserName,
+			Status:     1,
+			UserId:     fmt.Sprintf("%d", update.Message.From.ID),
+			CreateTime: time.Now().Unix(),
+			UpdateTime: time.Now().Unix(),
+			ChatId: 	fmt.Sprintf("%d",update.Message.Chat.ID),
+		}
+
+		if err := DB.Create(&url).Error; err != nil {
+			msg.Text = "server timeout"
+			log.Error("create url err:", err.Error(), ",user:", url.UserName)
+		}
+
+		_, _ = bot.Send(msg)
+
+	}()
+}
 func main() {
 	log.InitLog(log.InfoLog, os.Stdout, log.PATH)
 
@@ -86,46 +169,7 @@ func main() {
 	}
 
 	for update := range updates {
-		go func() {
-			if update.ChatMember!=nil{
-				var invitor Invitor
-				err := DB.Where("group_name=? and user_id=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID)).First(&invitor).Error
-
-				if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"&&invitor.Status!=0{  // 离开群组，需要update status=0
-					if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(0),"update_time": time.Now().Unix()}).Error; _err != nil {
-						log.Error("for left the chat, save invitor err:",_err.Error())
-					}
-					return
-				}
-
-			}
-			if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
-				var invitor Invitor
-				err := DB.Where("group_name=? and user_id=? and invitor_url=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID), update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
-				if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"&&invitor.Status!=1{
-					if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(1),"update_time": time.Now().Unix()}).Error; _err != nil {
-						log.Error("for join the chat, save invitor err:",_err.Error())
-					}
-					return
-				}
-
-				if err!=nil{
-					invitor = Invitor{
-						UserName: update.ChatMember.From.UserName,
-						FirstName: update.ChatMember.From.FirstName,
-						GroupName: update.ChatMember.Chat.Title,
-						UserId: fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID),
-						InvitorURL: update.ChatMember.InviteLink.InviteLink,
-						CreateTime: time.Now().Unix(),
-						UpdateTime: time.Now().Unix(),
-						Status: int8(1),
-					}
-					if err := DB.Create(&invitor).Error; err != nil {
-						log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
-					}
-				}
-			}
-		}()
+		go handleJoinOrLeft(update)
 
 		if update.Message == nil {
 			continue
@@ -147,48 +191,17 @@ func main() {
 				msg.Text = "You supplied the following argument: " + update.Message.CommandArguments()
 				_, _ = bot.Send(msg)
 			case "count":
-				log.Info("update.ChatMemeber: ",update.ChatMember)
-			case "url":
-				go func() {
-
-					var u URL
-					if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
-						msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
-						_, _ = bot.Send(msg)
-						return
-					}
-
-					response, err := bot.Request(core.NewCreateChatInviteLink(update.Message.Chat.ID))
-					if err != nil {
-						log.Error("bot.Rrequest error:", err.Error())
-						return
-					}
-
-					var inviteLink core.ChatInviteLink
-					if err := json.Unmarshal(response.Result, &inviteLink); err != nil {
-						return
-					}
-
-					msg.Text = fmt.Sprintf("allocate to:%s, url:%s", update.Message.From, inviteLink.InviteLink)
-
-					url := URL{
-						URLValue:   inviteLink.InviteLink,
-						UserName:   update.Message.From.UserName,
-						Status:     1,
-						UserId:     fmt.Sprintf("%d", update.Message.From.ID),
-						CreateTime: time.Now().Unix(),
-						UpdateTime: time.Now().Unix(),
-						ChatId: 	fmt.Sprintf("%d",update.Message.Chat.ID),
-					}
-
-					if err := DB.Create(&url).Error; err != nil {
-						msg.Text = "server timeout"
-						log.Error("create url err:", err.Error(), ",user:", url.UserName)
-					}
-
+				var count int64
+				if err:=DB.Model(&Invitor{}).Where("").Count(&count).Error;err==nil{
+					msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)
 					_, _ = bot.Send(msg)
+				}else{
+					msg.Text = "count error"
+					_, _ = bot.Send(msg)
+				}
 
-				}()
+			case "url":
+				generateURL(update, bot, msg)
 			default:
 				msg.Text = "I don't know that command"
 				_, _ = bot.Send(msg)
