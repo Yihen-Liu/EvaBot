@@ -17,18 +17,30 @@ import (
 )
 
 var (
-	DB *gorm.DB
+	DB *gorm.DB // it is no need to mind closing action.
 )
 
 type URL struct {
-	ID     		int    `json:"id"`
-	URLValue 	string `json:"url_value"`
-	Status 		int   `json:"status"`
-	UserName	string `json:"user_name"`
-	UserId		string `json:"user_id"`
+	ID     		int    	`json:"id"`
+	URLValue 	string 	`json:"url_value"`
+	Status 		int   	`json:"status"`
+	UserName	string 	`json:"user_name"`
+	UserId		string 	`json:"user_id"`
 	ChatId    	string	`json:"chat_id"`
 	CreateTime  int64   `json:"create_time"`
 	UpdateTime 	int64 	`json:"update_time"`
+}
+
+type Invitor struct {
+	ID     		int    	`json:"id"`
+	InvitorURL 	string 	`json:"invitor_url"`
+	UserName	string 	`json:"user_name"`
+	FirstName	string 	`json:"first_name"`
+	UserId		string 	`json:"user_id"`
+	GroupName   string	`json:"group_name"`
+	CreateTime  int64   `json:"create_time"`
+	UpdateTime 	int64 	`json:"update_time"`
+
 }
 
 func initMysql() (err error) {
@@ -57,7 +69,8 @@ func main() {
 
 	u := core.NewUpdate(0)
 	u.Timeout = 60
-	//u.AllowedUpdates = []string{}
+
+	u.AllowedUpdates = []string{core.UpdateTypeChatMember}
 
 	updates := bot.GetUpdatesChan(u)
 
@@ -72,12 +85,35 @@ func main() {
 	}
 
 	for update := range updates {
+		go func() {
+			if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
+				var invitor Invitor
+				if err := DB.Where("user_name=? and chat_id=?", update.ChatMember.Chat.Title, update.ChatMember.From.FirstName, update.ChatMember.From.ID, update.ChatMember.InviteLink.InviteLink).First(&invitor).Error; err == nil {
+					return
+				}
+			}
+
+				invitor := Invitor{
+					UserName: update.ChatMember.From.UserName,
+					FirstName: update.ChatMember.From.FirstName,
+					GroupName: update.ChatMember.Chat.Title,
+					UserId: fmt.Sprintf("%d",update.ChatMember.From.ID),
+					InvitorURL: update.ChatMember.InviteLink.InviteLink,
+					CreateTime: time.Now().Unix(),
+					UpdateTime: time.Now().Unix(),
+				}
+			if err := DB.Create(&invitor).Error; err != nil {
+				log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
+			}
+		}()
+
 		if update.Message == nil {
 			continue
 		}
 
 		log.Infof("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		log.Infof("chat-id:%d, chat-name:%s", update.Message.Chat.ID, update.Message.Chat.UserName)
+
 		//update.Message.
 		if update.Message.IsCommand() {
 			msg := core.NewMessage(update.Message.Chat.ID, "")
