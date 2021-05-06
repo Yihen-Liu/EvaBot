@@ -89,12 +89,10 @@ func main() {
 		go func() {
 			if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
 				var invitor Invitor
-				err := DB.Where("group_name=? and user_id=? and invite_link=?", update.ChatMember.Chat.Title, update.ChatMember.From.ID, update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
+				err := DB.Where("group_name=? and user_id=? and invitor_url=?", update.ChatMember.Chat.Title, update.ChatMember.From.ID, update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
 				if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"{
-					invitor.Status = 1
-					invitor.UpdateTime = time.Now().Unix()
-					if err = DB.Save(&invitor).Error; err != nil {
-						log.Error("for join the chat, save invitor err:",err.Error())
+					if _err := DB.Model(&invitor).Updates(Invitor{Status: 1,UpdateTime: time.Now().Unix()}).Error; _err != nil {
+						log.Error("for join the chat, save invitor err:",_err.Error())
 					}
 					return
 				}
@@ -102,8 +100,8 @@ func main() {
 				if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"{  // 离开群组，需要update status=0
 					invitor.Status = 0
 					invitor.UpdateTime = time.Now().Unix()
-					if err = DB.Save(&invitor).Error; err != nil {
-						log.Error("for left the chat, save invitor err:",err.Error())
+					if _err := DB.Model(&invitor).Updates(Invitor{Status: 0,UpdateTime: time.Now().Unix()}).Error; _err != nil {
+						log.Error("for left the chat, save invitor err:",_err.Error())
 					}
 					return
 				}
