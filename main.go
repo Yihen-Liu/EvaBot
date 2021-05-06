@@ -37,7 +37,7 @@ type Invitor struct {
 	UserName	string 	`json:"user_name"`
 	FirstName	string 	`json:"first_name"`
 	UserId		string 	`json:"user_id"`
-	Status 		int   	`json:"status"`
+	Status 		int8   	`json:"status"`
 	GroupName   string	`json:"group_name"`
 	CreateTime  int64   `json:"create_time"`
 	UpdateTime 	int64 	`json:"update_time"`
@@ -92,7 +92,7 @@ func main() {
 				err := DB.Where("group_name=? and user_id=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID)).First(&invitor).Error
 
 				if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"&&invitor.Status!=0{  // 离开群组，需要update status=0
-					if _err := DB.Model(&invitor).Updates(Invitor{Status: 0,UpdateTime: time.Now().Unix()}).Error; _err != nil {
+					if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(0),"update_time": time.Now().Unix()}).Error; _err != nil {
 						log.Error("for left the chat, save invitor err:",_err.Error())
 					}
 					return
@@ -103,7 +103,7 @@ func main() {
 				var invitor Invitor
 				err := DB.Where("group_name=? and user_id=? and invitor_url=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID), update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
 				if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"&&invitor.Status!=1{
-					if _err := DB.Model(&invitor).Updates(Invitor{Status: 1,UpdateTime: time.Now().Unix()}).Error; _err != nil {
+					if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(1),"update_time": time.Now().Unix()}).Error; _err != nil {
 						log.Error("for join the chat, save invitor err:",_err.Error())
 					}
 					return
@@ -118,7 +118,7 @@ func main() {
 						InvitorURL: update.ChatMember.InviteLink.InviteLink,
 						CreateTime: time.Now().Unix(),
 						UpdateTime: time.Now().Unix(),
-						Status: 1,
+						Status: int8(1),
 					}
 					if err := DB.Create(&invitor).Error; err != nil {
 						log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
