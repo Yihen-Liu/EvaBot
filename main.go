@@ -64,6 +64,13 @@ func initMysql() (err error) {
 
 func handleJoinOrLeft(update core.Update)  {
 	if update.ChatMember!=nil{
+		if value,ok:=BOT_WORKING_GROUPS[update.ChatMember.Chat.Title];!ok||value==false{
+			return
+		}
+
+	}
+
+	if update.ChatMember!=nil{
 		var invitor Invitor
 		err := DB.Where("group_name=? and user_id=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID)).First(&invitor).Error
 
@@ -171,9 +178,7 @@ func main() {
 	}
 
 	for update := range updates {
-		if value,ok:=BOT_WORKING_GROUPS[update.Message.Chat.Title];ok&&value==true{
-			go handleJoinOrLeft(update)
-		}
+		go handleJoinOrLeft(update)
 
 		if update.Message == nil {
 			continue
@@ -212,6 +217,9 @@ func main() {
 
 
 			case "url":
+				if update.Message == nil{
+					return
+				}
 				if value,ok:=BOT_WORKING_GROUPS[update.Message.Chat.Title];ok&&value==true{
 					go generateURL(update, bot, msg)
 				}else{
