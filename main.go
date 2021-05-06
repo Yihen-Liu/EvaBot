@@ -154,7 +154,7 @@ func main() {
 	u := core.NewUpdate(0)
 	u.Timeout = 60
 
-	u.AllowedUpdates = []string{core.UpdateTypeChatMember}
+	u.AllowedUpdates = []string{core.UpdateTypeChatMember, core.UpdateTypeMessage}
 
 	updates := bot.GetUpdatesChan(u)
 
@@ -192,13 +192,20 @@ func main() {
 				_, _ = bot.Send(msg)
 			case "count":
 				var count int64
-				if err:=DB.Model(&Invitor{}).Where("").Count(&count).Error;err==nil{
-					msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)
-					_, _ = bot.Send(msg)
-				}else{
-					msg.Text = "count error"
+				var u URL
+				if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
+					if err:=DB.Model(&Invitor{}).Where("invitor_url=? and status=1", u.URLValue).Count(&count).Error;err==nil{
+						msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
+						_, _ = bot.Send(msg)
+					}else{
+						msg.Text = update.Message.From.UserName + " count error"
+						_, _ = bot.Send(msg)
+					}
+				} else {
+					msg.Text = update.Message.From.UserName + " have no invite url, please use /url to generate one."
 					_, _ = bot.Send(msg)
 				}
+
 
 			case "url":
 				generateURL(update, bot, msg)
