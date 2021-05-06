@@ -37,6 +37,7 @@ type Invitor struct {
 	UserName	string 	`json:"user_name"`
 	FirstName	string 	`json:"first_name"`
 	UserId		string 	`json:"user_id"`
+	Status 		int   	`json:"status"`
 	GroupName   string	`json:"group_name"`
 	CreateTime  int64   `json:"create_time"`
 	UpdateTime 	int64 	`json:"update_time"`
@@ -88,12 +89,26 @@ func main() {
 		go func() {
 			if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
 				var invitor Invitor
-				if err := DB.Where("user_name=? and chat_id=?", update.ChatMember.Chat.Title, update.ChatMember.From.FirstName, update.ChatMember.From.ID, update.ChatMember.InviteLink.InviteLink).First(&invitor).Error; err == nil {
+				err := DB.Where("group_name=? and user_id=? and invite_link=?", update.ChatMember.Chat.Title, update.ChatMember.From.ID, update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
+				if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"{
+					invitor.Status = 1
+					invitor.UpdateTime = time.Now().Unix()
+					if err = DB.Save(&invitor).Error; err != nil {
+						log.Error("for join the chat, save invitor err:",err.Error())
+					}
 					return
 				}
-			}
 
-				invitor := Invitor{
+				if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"{  // 离开群组，需要update status=0
+					invitor.Status = 0
+					invitor.UpdateTime = time.Now().Unix()
+					if err = DB.Save(&invitor).Error; err != nil {
+						log.Error("for left the chat, save invitor err:",err.Error())
+					}
+					return
+				}
+
+				invitor = Invitor{
 					UserName: update.ChatMember.From.UserName,
 					FirstName: update.ChatMember.From.FirstName,
 					GroupName: update.ChatMember.Chat.Title,
@@ -101,9 +116,11 @@ func main() {
 					InvitorURL: update.ChatMember.InviteLink.InviteLink,
 					CreateTime: time.Now().Unix(),
 					UpdateTime: time.Now().Unix(),
+					Status: 1,
 				}
-			if err := DB.Create(&invitor).Error; err != nil {
-				log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
+				if err := DB.Create(&invitor).Error; err != nil {
+					log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
+				}
 			}
 		}()
 
