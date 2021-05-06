@@ -18,6 +18,12 @@ import (
 
 var (
 	DB *gorm.DB // it is no need to mind closing action.
+	BOT_WORKING_GROUPS = map[string]bool{
+		"eva_bot_2":true,
+		"eva_bot_test":true,
+		"Evanesco_Official_EN":true,
+		"Evanesco_Official_CN":true,
+	}
 )
 
 type URL struct {
@@ -98,8 +104,6 @@ func handleJoinOrLeft(update core.Update)  {
 }
 
 func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
-	go func() {
-
 		var u URL
 		if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
 			msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
@@ -136,8 +140,6 @@ func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 		}
 
 		_, _ = bot.Send(msg)
-
-	}()
 }
 func main() {
 	log.InitLog(log.InfoLog, os.Stdout, log.PATH)
@@ -169,7 +171,9 @@ func main() {
 	}
 
 	for update := range updates {
-		go handleJoinOrLeft(update)
+		if value,ok:=BOT_WORKING_GROUPS[update.Message.Chat.Title];ok&&value==true{
+			go handleJoinOrLeft(update)
+		}
 
 		if update.Message == nil {
 			continue
@@ -208,7 +212,12 @@ func main() {
 
 
 			case "url":
-				generateURL(update, bot, msg)
+				if value,ok:=BOT_WORKING_GROUPS[update.Message.Chat.Title];ok&&value==true{
+					go generateURL(update, bot, msg)
+				}else{
+					msg.Text = "bot is private, don't support this group."
+					_, _ = bot.Send(msg)
+				}
 			default:
 				msg.Text = "I don't know that command"
 				_, _ = bot.Send(msg)
