@@ -91,10 +91,7 @@ func main() {
 				var invitor Invitor
 				err := DB.Where("group_name=? and user_id=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.From.ID)).First(&invitor).Error
 
-				if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"{  // 离开群组，需要update status=0
-					if invitor.Status==0{
-						return
-					}
+				if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"&&invitor.Status!=0{  // 离开群组，需要update status=0
 					if _err := DB.Model(&invitor).Updates(Invitor{Status: 0,UpdateTime: time.Now().Unix()}).Error; _err != nil {
 						log.Error("for left the chat, save invitor err:",_err.Error())
 					}
@@ -105,28 +102,27 @@ func main() {
 			if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
 				var invitor Invitor
 				err := DB.Where("group_name=? and user_id=? and invitor_url=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.From.ID), update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
-				if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"{
-					if invitor.Status==1{
-						return
-					}
+				if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"&&invitor.Status!=1{
 					if _err := DB.Model(&invitor).Updates(Invitor{Status: 1,UpdateTime: time.Now().Unix()}).Error; _err != nil {
 						log.Error("for join the chat, save invitor err:",_err.Error())
 					}
 					return
 				}
 
-				invitor = Invitor{
-					UserName: update.ChatMember.From.UserName,
-					FirstName: update.ChatMember.From.FirstName,
-					GroupName: update.ChatMember.Chat.Title,
-					UserId: fmt.Sprintf("%d",update.ChatMember.From.ID),
-					InvitorURL: update.ChatMember.InviteLink.InviteLink,
-					CreateTime: time.Now().Unix(),
-					UpdateTime: time.Now().Unix(),
-					Status: 1,
-				}
-				if err := DB.Create(&invitor).Error; err != nil {
-					log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
+				if err!=nil{
+					invitor = Invitor{
+						UserName: update.ChatMember.From.UserName,
+						FirstName: update.ChatMember.From.FirstName,
+						GroupName: update.ChatMember.Chat.Title,
+						UserId: fmt.Sprintf("%d",update.ChatMember.From.ID),
+						InvitorURL: update.ChatMember.InviteLink.InviteLink,
+						CreateTime: time.Now().Unix(),
+						UpdateTime: time.Now().Unix(),
+						Status: 1,
+					}
+					if err := DB.Create(&invitor).Error; err != nil {
+						log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
+					}
 				}
 			}
 		}()
