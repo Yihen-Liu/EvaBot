@@ -151,7 +151,7 @@ func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 func main() {
 	log.InitLog(log.InfoLog, os.Stdout, log.PATH)
 
-	bot, err := core.NewBotAPI("1706227378:AAE1i8R1CgpG_WJd7wr6y_bned_ggt0NJ7o")
+	bot, err := core.NewBotAPI("1706227378:AAEAjAhUS6IAoDLiR8UAAcwH2sJM1qWSnQY")
 	if err != nil {
 		log.Error(err)
 	}
