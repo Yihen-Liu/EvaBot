@@ -2,14 +2,13 @@ package captcha
 
 import (
 	"fmt"
+	"github.com/riversgo007/EvaBot/features/invite"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
 	"regexp"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -76,7 +75,7 @@ func RunService() {
 
 	bot.Handle(tb.OnUserJoined, challengeUser)
 	bot.Handle(tb.OnCallback, passChallenge)
-
+	bot.Handle(tb.OnUserLeft, leaveAway)
 	bot.Handle("/healthz", func(m *tb.Message) {
 		msg := "I'm OK"
 		if _, err := bot.Send(m.Chat, msg); err != nil {
@@ -89,11 +88,24 @@ func RunService() {
 	go func() {
 		bot.Start()
 	}()
+}
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	<-signalChan
-	log.Println("Shutdown signal received, exiting...")
+func leaveAway(m *tb.Message) {
+	if m.UserLeft.ID != m.Sender.ID {
+		return
+	}
+
+	log.Printf("User: %v leave away the chat: %v", m.UserLeft, m.Chat)
+
+	//update invitors database
+	var invitor invite.Invitor
+	err := invite.DB.Where("group_name=? and user_id=?",m.Chat.Title, fmt.Sprintf("%d",m.Sender.ID)).First(&invitor).Error
+
+	if err == nil {
+		if _err := invite.DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(0),"update_time": time.Now().Unix()}).Error; _err != nil {
+			log.Println("update use invited success err:",_err.Error())
+		}
+	}
 }
 
 func challengeUser(m *tb.Message) {
@@ -189,6 +201,17 @@ func passChallenge(c *tb.Callback) {
 	if err != nil {
 		log.Println(err)
 	}
+
+	//update invitors database
+	var invitor invite.Invitor
+	err = invite.DB.Where("group_name=? and user_id=?",c.Message.Chat.Title, fmt.Sprintf("%d",c.Sender.ID)).First(&invitor).Error
+
+	if err == nil {
+		if _err := invite.DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(1),"update_time": time.Now().Unix()}).Error; _err != nil {
+			log.Println("update use invited success err:",_err.Error())
+		}
+	}
+
 	err = bot.Respond(c, &tb.CallbackResponse{Text: "Validation passed!"})
 	if err != nil {
 		log.Println(err)

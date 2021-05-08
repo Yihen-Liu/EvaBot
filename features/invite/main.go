@@ -62,7 +62,7 @@ func initMysql() (err error) {
 	return
 }
 
-func handleJoinOrLeft(update core.Update)  {
+func _handleJoinOrLeft(update core.Update)  {
 	if update.ChatMember!=nil{
 		if value,ok:=BOT_WORKING_GROUPS[update.ChatMember.Chat.Title];!ok||value==false{
 			return
@@ -102,6 +102,35 @@ func handleJoinOrLeft(update core.Update)  {
 				CreateTime: time.Now().Unix(),
 				UpdateTime: time.Now().Unix(),
 				Status: int8(1),
+			}
+			if err := DB.Create(&invitor).Error; err != nil {
+				log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
+			}
+		}
+	}
+}
+func handleJoinOrLeft(update core.Update)  {
+	if update.ChatMember!=nil{
+		if value,ok:=BOT_WORKING_GROUPS[update.ChatMember.Chat.Title];!ok||value==false{
+			return
+		}
+
+	}
+
+	if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
+		var invitor Invitor
+		err := DB.Where("group_name=? and user_id=? and invitor_url=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID), update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
+
+		if err!=nil{
+			invitor = Invitor{
+				UserName: update.ChatMember.From.UserName,
+				FirstName: update.ChatMember.From.FirstName,
+				GroupName: update.ChatMember.Chat.Title,
+				UserId: fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID),
+				InvitorURL: update.ChatMember.InviteLink.InviteLink,
+				CreateTime: time.Now().Unix(),
+				UpdateTime: time.Now().Unix(),
+				Status: int8(0),
 			}
 			if err := DB.Create(&invitor).Error; err != nil {
 				log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
@@ -188,6 +217,18 @@ func RunService() {
 		log.Infof("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		log.Infof("chat-id:%d, chat-name:%s", update.Message.Chat.ID, update.Message.Chat.UserName)
 
+		if update.Message.LeftChatMember!=nil{
+			//update invitors database when user was kicked from group
+			var invitor Invitor
+			err := DB.Where("group_name=? and user_id=?",update.Message.Chat.Title, fmt.Sprintf("%d",update.Message.LeftChatMember.ID)).First(&invitor).Error
+
+			if err == nil {
+				if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(0),"update_time": time.Now().Unix()}).Error; _err != nil {
+					log.Error("update use invited success err:",_err.Error())
+				}
+			}
+		}
+
 		//update.Message.
 		if update.Message.IsCommand() {
 			msg := core.NewMessage(update.Message.Chat.ID, "")
@@ -200,22 +241,24 @@ func RunService() {
 			case "withArgument":
 				msg.Text = "You supplied the following argument: " + update.Message.CommandArguments()
 				_, _ = bot.Send(msg)
+
 			case "count":
-				var count int64
-				var u URL
-				if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
-					if err:=DB.Model(&Invitor{}).Where("invitor_url=? and status=1", u.URLValue).Count(&count).Error;err==nil{
-						msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
-						_, _ = bot.Send(msg)
-					}else{
-						msg.Text = update.Message.From.UserName + " count error"
+				go func() {
+					var count int64
+					var u URL
+					if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
+						if err:=DB.Model(&Invitor{}).Where("invitor_url=? and status=1", u.URLValue).Count(&count).Error;err==nil{
+							msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
+							_, _ = bot.Send(msg)
+						}else{
+							msg.Text = update.Message.From.UserName + " count error"
+							_, _ = bot.Send(msg)
+						}
+					} else {
+						msg.Text = update.Message.From.UserName + " have no invite url, please use /url to generate one."
 						_, _ = bot.Send(msg)
 					}
-				} else {
-					msg.Text = update.Message.From.UserName + " have no invite url, please use /url to generate one."
-					_, _ = bot.Send(msg)
-				}
-
+				}()
 
 			case "url":
 				if update.Message == nil{
