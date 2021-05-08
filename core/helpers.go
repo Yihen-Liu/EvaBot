@@ -866,3 +866,25 @@ func NewRevokeChatInviteLink(chatID int64, link string) RevokeChatInviteLinkConf
 			InviteLink: link,
 	}
 }
+
+func NewRestrictChatMemeber(chatID int64, userID int64, untilDate int64, permissions *ChatPermissions)  RestrictChatMemberConfig {
+	return RestrictChatMemberConfig{
+		ChatMemberConfig: ChatMemberConfig{
+			ChatID: chatID,
+			UserID: userID,
+		},
+		UntilDate: untilDate,
+		Permissions: permissions,
+	}
+}
+
+func NewKickChatMember(chatID int64, userID int64, untilDate int64, revokeMessages bool) KickChatMemberConfig{
+	return KickChatMemberConfig{
+		ChatMemberConfig:ChatMemberConfig{
+			ChatID: chatID,
+			UserID: userID,
+		},
+		UntilDate: untilDate,
+		RevokeMessages: revokeMessages,
+	}
+}
