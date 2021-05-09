@@ -174,6 +174,14 @@ func challengeUser(m *tb.Message) {
 
 // passChallenge is used when user passed the validation
 func passChallenge(c *tb.Callback) {
+	if c.Message == nil || c.Message.ReplyTo==nil|| c.Message.ReplyTo.Sender==nil || c.Sender==nil{
+		err := bot.Respond(c, &tb.CallbackResponse{Text: "This button is incorrect for you"})
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
 	if c.Message.ReplyTo.Sender.ID != c.Sender.ID {
 		err := bot.Respond(c, &tb.CallbackResponse{Text: "This button isn't for you"})
 		if err != nil {
