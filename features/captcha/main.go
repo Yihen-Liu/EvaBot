@@ -117,6 +117,11 @@ func challengeUser(m *tb.Message) {
 	if member, err := bot.ChatMemberOf(m.Chat, m.UserJoined); err == nil {
 		if member.Role == tb.Restricted {
 			log.Printf("User: %v already restricted in chat: %v", m.UserJoined, m.Chat)
+			newChatMember := tb.ChatMember{User: m.UserJoined, RestrictedUntil: tb.Forever(), Rights: tb.Rights{CanSendMessages: true}}
+			err := bot.Promote(m.Chat, &newChatMember)
+			if err != nil {
+				log.Println(err)
+			}
 			return
 		}
 	}
