@@ -9,13 +9,16 @@ import (
 	"github.com/riversgo007/EvaBot/common/log"
 	"github.com/riversgo007/EvaBot/core"
 	"os"
+	"sync"
 	"time"
 )
+
+var passedUsers = sync.Map{}
 
 func RunService() {
 	log.InitLog(log.InfoLog, os.Stdout, log.PATH)
 
-	bot, err := core.NewBotAPI("1706227378:AAEAjAhUS6IAoDLiR8UAAcwH2sJM1qWSnQY")
+	bot, err := core.NewBotAPI("1723000333:AAFeplI74Q2ZP7IVoddxlXr0ODelLzKjez4")
 	if err != nil {
 		log.Error(err)
 	}
@@ -36,15 +39,19 @@ func RunService() {
 	time.Sleep(time.Millisecond * 500)
 	updates.Clear()
 
+	go broadcast(bot)
 
 	for update := range updates {
+		if update.ChatMember !=nil{
+			if update.ChatMember.From.IsBot && update.ChatMember.From.UserName=="newcoin"{
+				log.Infof("chat.id:%d, username:%s",update.ChatMember.Chat.ID, update.ChatMember.From.UserName)
 
+				passedUsers.Store(update.ChatMember.Chat.ID, true)
+			}
+		}
 		if update.Message == nil {
 			continue
 		}
-
-		log.Infof("[%s] %s", update.Message.From.UserName, update.Message.Text)
-		log.Infof("chat-id:%d, chat-name:%s", update.Message.Chat.ID, update.Message.Chat.UserName)
 
 		//update.Message.
 		if update.Message.IsCommand() {
@@ -52,15 +59,23 @@ func RunService() {
 
 			switch update.Message.Command() {
 			case "help":
-				msg.Text = "type /url or /count"
-				_, _ = bot.Send(msg)
-
-			case "withArgument":
-				msg.Text = "You supplied the following argument: " + update.Message.CommandArguments()
+				msg.Text = "type /newcoin [ito/ido]"
 				_, _ = bot.Send(msg)
 
 			case "newcoin":
-				msg.Text = "bot is private, don't support this group."
+				arg:= update.Message.CommandArguments()
+
+				if arg=="ito"{
+					msg.Text = "evanesco ito will coming soon."
+				}
+
+				if arg == "ido"{
+					msg.Text = "evanesco ito will coming soon."
+				}
+
+				if arg == ""{
+					msg.Text = "please type /newcoin [ito/ido]; for example: /newcoin ito"
+				}
 				_, _ = bot.Send(msg)
 
 			default:
@@ -69,5 +84,21 @@ func RunService() {
 			}
 		}
 
+	}
+}
+
+func broadcast(bot *core.BotAPI) {
+	t := time.NewTicker(time.Second*10)
+	for {
+		select {
+		case <-t.C:
+			passedUsers.Range(func(key, value interface{}) bool {
+				if value.(bool)==true{
+					msg := core.NewMessage(key.(int64), "broadcat from newcoin bot")
+					_, _ = bot.Send(msg)
+				}
+				return true
+			})
+		}
 	}
 }
