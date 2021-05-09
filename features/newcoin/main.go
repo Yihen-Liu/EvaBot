@@ -42,17 +42,15 @@ func RunService() {
 	go broadcast(bot)
 
 	for update := range updates {
-		if update.ChatMember !=nil{
-			if update.ChatMember.From.IsBot && update.ChatMember.From.UserName=="newcoin"{
-				log.Infof("chat.id:%d, username:%s",update.ChatMember.Chat.ID, update.ChatMember.From.UserName)
-
-				passedUsers.Store(update.ChatMember.Chat.ID, true)
-			}
-		}
 		if update.Message == nil {
 			continue
 		}
 
+		for _, member:=range update.Message.NewChatMembers{
+			if member.IsBot==true && member.UserName=="newcoin_coming_bot"{
+				passedUsers.Store(update.Message.Chat.ID, true)
+			}
+		}
 		//update.Message.
 		if update.Message.IsCommand() {
 			msg := core.NewMessage(update.Message.Chat.ID, "")
