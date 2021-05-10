@@ -9,11 +9,14 @@ import (
 	"github.com/riversgo007/EvaBot/common/log"
 	"github.com/riversgo007/EvaBot/core"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
 
 var passedUsers = sync.Map{}
+
+const NEW_COIN = "newcoin"
 
 func RunService() {
 	log.InitLog(log.InfoLog, os.Stdout, log.PATH)
@@ -39,6 +42,10 @@ func RunService() {
 	time.Sleep(time.Millisecond * 500)
 	updates.Clear()
 
+	if err:=initMysql();err!=nil{
+		panic(err.Error())
+	}
+
 	go broadcast(bot)
 
 	for update := range updates {
@@ -47,8 +54,23 @@ func RunService() {
 		}
 
 		for _, member:=range update.Message.NewChatMembers{
-			if member.IsBot==true && member.UserName=="newcoin_coming_bot"{
-				passedUsers.Store(update.Message.Chat.ID, true)
+			if member.IsBot==true && update.Message.Chat.Type=="group" && member.UserName=="newcoin_coming_bot"{
+				var group Group
+				err := DB.Where("bot_name=? and group_id=?", NEW_COIN, strconv.FormatInt(update.Message.Chat.ID, 10)).First(&group).Error
+				if err!=nil{
+					group = Group{
+						BotName: NEW_COIN,
+						GroupName: update.Message.Chat.Title,
+						UserAmount: 0,
+						GroupID: strconv.FormatInt(update.Message.Chat.ID, 10),
+						CreateTime: time.Now().Unix(),
+						UpdateTime: time.Now().Unix(),
+						IsKick: int8(1),
+					}
+					if err := DB.Create(&group).Error; err != nil {
+						log.Errorf("create group row err:%s, group name:%s, bot name:%s", err.Error(), group.GroupName, group.BotName)
+					}
+				}
 			}
 		}
 		//update.Message.
@@ -90,13 +112,27 @@ func broadcast(bot *core.BotAPI) {
 	for {
 		select {
 		case <-t.C:
-			passedUsers.Range(func(key, value interface{}) bool {
+			var groups []Group
+			err := DB.Where("bot_name=?", NEW_COIN).Find(&groups).Error
+			if err==nil{
+				for _,group:=range groups{
+					chatID, err:= strconv.ParseInt(group.GroupID, 10, 64)
+					if err!=nil {
+						log.Errorf("(broadcast) parse group id:%s, err:%s", group.GroupID, err.Error())
+						continue
+					}
+					msg := core.NewMessage(chatID, "broadcast from newcoin bot")
+					_, _ =bot.Send(msg)
+				}
+			}
+			/*	passedUsers.Range(func(key, value interface{}) bool {
 				if value.(bool)==true{
 					msg := core.NewMessage(key.(int64), "broadcat from newcoin bot")
 					_, _ = bot.Send(msg)
 				}
 				return true
 			})
+*/
 		}
 	}
 }
