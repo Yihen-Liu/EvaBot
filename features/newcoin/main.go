@@ -54,7 +54,7 @@ func RunService() {
 		}
 
 		for _, member:=range update.Message.NewChatMembers{
-			if member.IsBot==true && update.Message.Chat.Type=="group" && member.UserName=="newcoin_coming_bot"{
+			if member.IsBot==true && (update.Message.Chat.IsGroup()||update.Message.Chat.IsSuperGroup()) && member.UserName=="newcoin_coming_bot"{
 				var group Group
 				err := DB.Where("bot_name=? and group_id=?", NEW_COIN, strconv.FormatInt(update.Message.Chat.ID, 10)).First(&group).Error
 				if err!=nil{
