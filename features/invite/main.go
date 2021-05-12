@@ -141,7 +141,7 @@ func handleJoinOrLeft(update core.Update)  {
 
 func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 		var u URL
-		if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
+		if err := DB.Where("user_id=? and chat_id=?", fmt.Sprintf("%d",update.Message.From.ID), update.Message.Chat.ID).First(&u).Error; err == nil {
 			msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
 			_, _ = bot.Send(msg)
 			return
