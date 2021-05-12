@@ -246,7 +246,7 @@ func RunService() {
 				go func() {
 					var count int64
 					var u URL
-					if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
+					if err := DB.Where("user_id=? and chat_id=?", update.Message.From.ID, update.Message.Chat.ID).First(&u).Error; err == nil {
 						if err:=DB.Model(&Invitor{}).Where("invitor_url=?", u.URLValue).Count(&count).Error;err==nil{
 							msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
 							_, _ = bot.Send(msg)
