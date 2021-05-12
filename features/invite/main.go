@@ -130,7 +130,7 @@ func handleJoinOrLeft(update core.Update)  {
 				InvitorURL: update.ChatMember.InviteLink.InviteLink,
 				CreateTime: time.Now().Unix(),
 				UpdateTime: time.Now().Unix(),
-				Status: int8(0),
+				Status: int8(1),
 			}
 			if err := DB.Create(&invitor).Error; err != nil {
 				log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
@@ -247,7 +247,7 @@ func RunService() {
 					var count int64
 					var u URL
 					if err := DB.Where("user_name=? and chat_id=?", update.Message.From.UserName, update.Message.Chat.ID).First(&u).Error; err == nil {
-						if err:=DB.Model(&Invitor{}).Where("invitor_url=? and status=1", u.URLValue).Count(&count).Error;err==nil{
+						if err:=DB.Model(&Invitor{}).Where("invitor_url=?", u.URLValue).Count(&count).Error;err==nil{
 							msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
 							_, _ = bot.Send(msg)
 						}else{
@@ -272,7 +272,7 @@ func RunService() {
 				}
 			default:
 				msg.Text = "I don't know that command"
-				_, _ = bot.Send(msg)
+				//_, _ = bot.Send(msg)
 			}
 		}
 
