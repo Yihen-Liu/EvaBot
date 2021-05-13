@@ -139,11 +139,20 @@ func handleJoinOrLeft(update core.Update)  {
 	}
 }
 
+func sendDelMessage(bot *core.BotAPI, chatID int64, messageID int) {
+	t := time.NewTicker(time.Second*15)
+	select {
+	case <-t.C:
+		_, _ = bot.Send(core.NewDeleteMessage(chatID, messageID))
+	}
+}
+
 func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 		var u URL
 		if err := DB.Where("user_id=? and chat_id=?", fmt.Sprintf("%d",update.Message.From.ID), update.Message.Chat.ID).First(&u).Error; err == nil {
 			msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
-			_, _ = bot.Send(msg)
+			message, _ := bot.Send(msg)
+			go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 			return
 		}
 
@@ -175,7 +184,8 @@ func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 			log.Error("create url err:", err.Error(), ",user:", url.UserName)
 		}
 
-		_, _ = bot.Send(msg)
+		message, _ := bot.Send(msg)
+		go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 }
 
 func RunService() {
@@ -249,14 +259,18 @@ func RunService() {
 					if err := DB.Where("user_id=? and chat_id=?", update.Message.From.ID, update.Message.Chat.ID).First(&u).Error; err == nil {
 						if err:=DB.Model(&Invitor{}).Where("invitor_url=?", u.URLValue).Count(&count).Error;err==nil{
 							msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
-							_, _ = bot.Send(msg)
+
+							message, _ := bot.Send(msg)
+							go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 						}else{
 							msg.Text = update.Message.From.UserName + " count error"
-							_, _ = bot.Send(msg)
+							message, _ := bot.Send(msg)
+							go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 						}
 					} else {
 						msg.Text = update.Message.From.UserName + " have no invite url, please use /url to generate one."
-						_, _ = bot.Send(msg)
+						message, _ := bot.Send(msg)
+						go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 					}
 				}()
 
@@ -268,7 +282,8 @@ func RunService() {
 					go generateURL(update, bot, msg)
 				}else{
 					msg.Text = "bot is private, don't support this group."
-					_, _ = bot.Send(msg)
+					message, _ := bot.Send(msg)
+					go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 				}
 			default:
 				msg.Text = "I don't know that command"
