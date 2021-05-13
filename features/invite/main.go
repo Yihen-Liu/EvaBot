@@ -260,16 +260,19 @@ func RunService() {
 						if err:=DB.Model(&Invitor{}).Where("invitor_url=?", u.URLValue).Count(&count).Error;err==nil{
 							msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
 
+							go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
 							message, _ := bot.Send(msg)
 							go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 						}else{
 							msg.Text = update.Message.From.UserName + " count error"
 							message, _ := bot.Send(msg)
+							go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
 							go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 						}
 					} else {
 						msg.Text = update.Message.From.UserName + " have no invite url, please use /url to generate one."
 						message, _ := bot.Send(msg)
+						go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
 						go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 					}
 				}()
@@ -279,10 +282,12 @@ func RunService() {
 					return
 				}
 				if value,ok:=BOT_WORKING_GROUPS[update.Message.Chat.Title];ok&&value==true{
+					go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
 					go generateURL(update, bot, msg)
 				}else{
 					msg.Text = "bot is private, don't support this group."
 					message, _ := bot.Send(msg)
+					go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
 					go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
 				}
 			default:
