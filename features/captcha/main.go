@@ -73,9 +73,9 @@ func RunService() {
 		log.Fatalf("Cannot start bot. Error: %v\n", err)
 	}
 
-	bot.Handle(tb.OnUserJoined, challengeUser)
-	bot.Handle(tb.OnCallback, passChallenge)
-	bot.Handle(tb.OnUserLeft, leaveAway)
+	bot.Handle(tb.OnUserJoined, removeRestrict)
+	//bot.Handle(tb.OnCallback, passChallenge)
+	//bot.Handle(tb.OnUserLeft, leaveAway)
 	bot.Handle("/healthz", func(m *tb.Message) {
 		msg := "I'm OK"
 		if _, err := bot.Send(m.Chat, msg); err != nil {
@@ -106,6 +106,27 @@ func leaveAway(m *tb.Message) {
 			log.Println("update use invited success err:",_err.Error())
 		}
 	}
+}
+
+func removeRestrict(m *tb.Message) {
+	if m.UserJoined.ID != m.Sender.ID {
+		return
+	}
+	log.Printf("User: %v joined the chat: %v", m.UserJoined, m.Chat)
+
+	if member, err := bot.ChatMemberOf(m.Chat, m.UserJoined); err == nil {
+		if member.Role == tb.Restricted {
+			log.Printf("User: %v already restricted in chat: %v", m.UserJoined, m.Chat)
+			//if there is somebody was ban forever, open the door again.
+			newChatMember := tb.ChatMember{User: m.UserJoined, RestrictedUntil: tb.Forever(), Rights: tb.Rights{CanSendMessages: true}}
+			err := bot.Promote(m.Chat, &newChatMember)
+			if err != nil {
+				log.Println(err)
+			}
+			//return
+		}
+	}
+	return
 }
 
 func challengeUser(m *tb.Message) {
