@@ -19,6 +19,7 @@ import (
 var (
 	DB *gorm.DB // it is no need to mind closing action.
 	BOT_WORKING_GROUPS = map[string]bool{
+		"eva_test_6":true,
 		"eva_bot_2":true,
 		"eva_bot_test":true,
 		"Evanesco_Official_EN":true,
@@ -62,53 +63,6 @@ func initMysql() (err error) {
 	return
 }
 
-func _handleJoinOrLeft(update core.Update)  {
-	if update.ChatMember!=nil{
-		if value,ok:=BOT_WORKING_GROUPS[update.ChatMember.Chat.Title];!ok||value==false{
-			return
-		}
-
-	}
-
-	if update.ChatMember!=nil{
-		var invitor Invitor
-		err := DB.Where("group_name=? and user_id=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID)).First(&invitor).Error
-
-		if err == nil && update.ChatMember.NewChatMember.Status=="left" && update.ChatMember.OldChatMember.Status=="member"&&invitor.Status!=0{  // 离开群组，需要update status=0
-			if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(0),"update_time": time.Now().Unix()}).Error; _err != nil {
-				log.Error("for left the chat, save invitor err:",_err.Error())
-			}
-			return
-		}
-
-	}
-	if update.ChatMember!=nil && update.ChatMember.InviteLink!=nil{
-		var invitor Invitor
-		err := DB.Where("group_name=? and user_id=? and invitor_url=?", update.ChatMember.Chat.Title, fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID), update.ChatMember.InviteLink.InviteLink).First(&invitor).Error
-		if err==nil&&update.ChatMember.NewChatMember.Status=="member"&&update.ChatMember.OldChatMember.Status=="left"&&invitor.Status!=1{
-			if _err := DB.Model(&invitor).Updates(map[string]interface{}{"status": int8(1),"update_time": time.Now().Unix()}).Error; _err != nil {
-				log.Error("for join the chat, save invitor err:",_err.Error())
-			}
-			return
-		}
-
-		if err!=nil{
-			invitor = Invitor{
-				UserName: update.ChatMember.From.UserName,
-				FirstName: update.ChatMember.From.FirstName,
-				GroupName: update.ChatMember.Chat.Title,
-				UserId: fmt.Sprintf("%d",update.ChatMember.OldChatMember.User.ID),
-				InvitorURL: update.ChatMember.InviteLink.InviteLink,
-				CreateTime: time.Now().Unix(),
-				UpdateTime: time.Now().Unix(),
-				Status: int8(1),
-			}
-			if err := DB.Create(&invitor).Error; err != nil {
-				log.Errorf("create invitor err:%s,invitor url:%s, group name:%s, user name:%s, first name:%s", err.Error(), invitor.InvitorURL, invitor.GroupName, invitor.UserName, invitor.FirstName)
-			}
-		}
-	}
-}
 func handleJoinOrLeft(update core.Update)  {
 	if update.ChatMember!=nil{
 		if value,ok:=BOT_WORKING_GROUPS[update.ChatMember.Chat.Title];!ok||value==false{
@@ -139,11 +93,12 @@ func handleJoinOrLeft(update core.Update)  {
 	}
 }
 
-func sendDelMessage(bot *core.BotAPI, chatID int64, messageID int) {
+func sendDelMessage(bot *core.BotAPI, update core.Update, message core.MessageConfig) {
+	msg, _ := bot.Send(message)
 	t := time.NewTicker(time.Second*15)
 	select {
 	case <-t.C:
-		_, _ = bot.Send(core.NewDeleteMessage(chatID, messageID))
+		_, _ = bot.Send(core.NewDeleteMessage(update.Message.Chat.ID, msg.MessageID))
 	}
 }
 
@@ -151,8 +106,7 @@ func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 		var u URL
 		if err := DB.Where("user_id=? and chat_id=?", fmt.Sprintf("%d",update.Message.From.ID), update.Message.Chat.ID).First(&u).Error; err == nil {
 			msg.Text = fmt.Sprintf("%s has been DONE, url:%s, don't repeated.", update.Message.From, u.URLValue)
-			message, _ := bot.Send(msg)
-			go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
+			go sendDelMessage(bot, update, msg)
 			return
 		}
 
@@ -184,8 +138,7 @@ func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 			log.Error("create url err:", err.Error(), ",user:", url.UserName)
 		}
 
-		message, _ := bot.Send(msg)
-		go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
+		go sendDelMessage(bot, update, msg)
 }
 
 func RunService() {
@@ -260,20 +213,14 @@ func RunService() {
 						if err:=DB.Model(&Invitor{}).Where("invitor_url=?", u.URLValue).Count(&count).Error;err==nil{
 							msg.Text = update.Message.From.UserName+" has invite "+fmt.Sprintf("%d",count)+", invit url is "+u.URLValue
 
-							go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
-							message, _ := bot.Send(msg)
-							go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
+							go sendDelMessage(bot, update, msg)
 						}else{
 							msg.Text = update.Message.From.UserName + " count error"
-							message, _ := bot.Send(msg)
-							go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
-							go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
+							go sendDelMessage(bot, update, msg)
 						}
 					} else {
 						msg.Text = update.Message.From.UserName + " have no invite url, please use /url to generate one."
-						message, _ := bot.Send(msg)
-						go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
-						go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
+						go sendDelMessage(bot, update, msg)
 					}
 				}()
 
@@ -282,17 +229,14 @@ func RunService() {
 					return
 				}
 				if value,ok:=BOT_WORKING_GROUPS[update.Message.Chat.Title];ok&&value==true{
-					go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
 					go generateURL(update, bot, msg)
 				}else{
 					msg.Text = "bot is private, don't support this group."
-					message, _ := bot.Send(msg)
-					go  sendDelMessage(bot, update.Message.Chat.ID, update.Message.MessageID)
-					go sendDelMessage(bot, update.Message.Chat.ID, message.MessageID)
+					go sendDelMessage(bot, update, msg)
 				}
 			default:
 				msg.Text = "I don't know that command"
-				//_, _ = bot.Send(msg)
+				go sendDelMessage(bot, update, msg)
 			}
 		}
 
