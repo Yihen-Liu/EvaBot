@@ -199,7 +199,7 @@ func RunService() {
 			switch update.Message.Command() {
 			case "help":
 				msg.Text = "type /url or /count"
-				_, _ = bot.Send(msg)
+				go sendDelMessage(bot, update, msg)
 
 			case "withArgument":
 				msg.Text = "You supplied the following argument: " + update.Message.CommandArguments()
