@@ -235,17 +235,15 @@ func RunService() {
 					go sendDelMessage(bot, update, msg)
 				}
 			default:
-				msg.Text = "I don't know that command"
+				msg.Text = "I don't know that command: "+update.Message.Command()
 				go sendDelMessage(bot, update, msg)
 			}
-		}
 
-		go func() {
-			t := time.NewTicker(time.Second*15)
+			t := time.NewTicker(time.Second*3)
 			select {
 			case <-t.C:
 				_, _ = bot.Send(core.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
 			}
-		}()
+		}
 	}
 }
