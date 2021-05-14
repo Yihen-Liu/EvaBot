@@ -240,5 +240,12 @@ func RunService() {
 			}
 		}
 
+		go func() {
+			t := time.NewTicker(time.Second*15)
+			select {
+			case <-t.C:
+				_, _ = bot.Send(core.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
+			}
+		}()
 	}
 }
