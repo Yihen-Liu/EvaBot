@@ -94,13 +94,13 @@ func handleJoinOrLeft(update core.Update)  {
 }
 
 func sendDelMessage(bot *core.BotAPI, update core.Update, message core.MessageConfig) {
-	msg, _ := bot.Send(message)
-	t := time.NewTicker(time.Second*15)
+	_, _ = bot.Send(message)
+/*	t := time.NewTicker(time.Second*15)
 	select {
 	case <-t.C:
 		_, _ = bot.Send(core.NewDeleteMessage(update.Message.Chat.ID, msg.MessageID))
 	}
-}
+*/}
 
 func generateURL(update core.Update, bot *core.BotAPI, msg core.MessageConfig) {
 		var u URL
@@ -242,7 +242,7 @@ func RunService() {
 				t := time.NewTicker(time.Second*15)
 				select {
 				case <-t.C:
-					_, _ = bot.Send(core.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
+					//_, _ = bot.Send(core.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
 				}
 			}()
 		}
